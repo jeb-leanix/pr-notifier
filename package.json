@@ -1,0 +1,22 @@
+{
+  "name": "pr-notifier",
+  "version": "1.0.0",
+  "description": "GitHub PR observer that monitors CI/CD status, reviews, and comments",
+  "type": "module",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "npm run build && node build/index.js"
+  },
+  "keywords": ["claude-skill", "github", "pr", "notifications", "ci-cd"],
+  "author": "Jens Beau",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3"
+  }
+}
