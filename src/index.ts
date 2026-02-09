@@ -8,6 +8,11 @@
 
 import { PRFetcher } from "./pr-fetcher.js";
 import { EventDetector } from "./event-detector.js";
+import { Notifier } from "./notifier.js";
+import { SummaryReporter } from "./summary-reporter.js";
+import { MultiPRWatcher } from "./multi-pr-watcher.js";
+import { RetryHandler } from "./retry-handler.js";
+import { PRAnalyzer } from "./pr-analyzer.js";
 import { WatchOptions, NotifyFilter, UntilCondition, PRSnapshot, PREvent } from "./types.js";
 
 interface SkillContext {
@@ -21,27 +26,45 @@ interface SkillContext {
  */
 export async function execute(
   context: SkillContext,
-  prNumber: string,
+  prNumbers: string,
   options: {
     notifyOn?: NotifyFilter;
     interval?: string;
     until?: UntilCondition;
+    desktop?: boolean;
+    bell?: boolean;
   } = {}
 ): Promise<string> {
+  // Parse PR numbers (supports comma-separated list)
+  const prNumberList = prNumbers.split(",").map((n) => parseInt(n.trim(), 10));
+
+  if (prNumberList.some((n) => isNaN(n))) {
+    return `❌ Invalid PR number(s): ${prNumbers}`;
+  }
+
+  // Multi-PR mode
+  if (prNumberList.length > 1) {
+    return executeMultiPR(prNumberList, options);
+  }
+
+  // Single PR mode
   const watchOptions: WatchOptions = {
-    prNumber: parseInt(prNumber, 10),
+    prNumber: prNumberList[0],
     notifyOn: options.notifyOn || "all",
     interval: parseInterval(options.interval || "30s"),
     until: options.until,
   };
 
-  if (isNaN(watchOptions.prNumber)) {
-    return `❌ Invalid PR number: ${prNumber}`;
-  }
-
   try {
     const fetcher = new PRFetcher();
     const detector = new EventDetector();
+    const notifier = new Notifier({
+      desktop: options.desktop ?? false,
+      terminal: options.bell ?? false,
+    });
+    const summaryReporter = new SummaryReporter();
+    const retryHandler = new RetryHandler();
+    const analyzer = new PRAnalyzer();
 
     let previousSnapshot: PRSnapshot | null = null;
     let iteration = 0;
@@ -55,12 +78,21 @@ export async function execute(
     if (watchOptions.until) {
       output.push(`🎯 Until: ${watchOptions.until}`);
     }
+    if (options.desktop || options.bell) {
+      const notifyTypes: string[] = [];
+      if (options.desktop) notifyTypes.push("desktop");
+      if (options.bell) notifyTypes.push("terminal");
+      output.push(`🔔 Notifications: ${notifyTypes.join(", ")}`);
+    }
     output.push("");
 
     while (iteration < maxIterations) {
       try {
-        // Fetch current state
-        const currentSnapshot = await fetcher.fetch(watchOptions.prNumber);
+        // Fetch current state with retry logic
+        const currentSnapshot = await retryHandler.execute(
+          () => fetcher.fetch(watchOptions.prNumber),
+          `Fetching PR #${watchOptions.prNumber}`
+        );
 
         // Detect changes
         const events = detector.detectChanges(previousSnapshot, currentSnapshot);
@@ -68,9 +100,20 @@ export async function execute(
         // Filter events based on notify preferences
         const filteredEvents = filterEvents(events, watchOptions.notifyOn);
 
-        // Report events
+        // Report events and send notifications
         for (const event of filteredEvents) {
-          output.push(formatEvent(event));
+          const formattedEvent = formatEvent(event);
+          output.push(formattedEvent);
+          summaryReporter.recordEvent(event);
+          notifier.notify(event, watchOptions.prNumber);
+        }
+
+        // Analyze PR and provide insights (every 5 iterations)
+        if (iteration % 5 === 0 && iteration > 0) {
+          const insights = analyzer.analyze(currentSnapshot);
+          for (const insight of insights) {
+            output.push(`   ${insight.message}`);
+          }
         }
 
         // Check if we should stop watching
@@ -78,6 +121,15 @@ export async function execute(
           output.push("");
           output.push(`✅ Condition met: ${watchOptions.until}`);
           output.push("Stopping watch.");
+
+          // Generate summary
+          const summary = summaryReporter.generateSummary(currentSnapshot);
+          output.push(summary);
+
+          // Send summary notification
+          const compactSummary = summaryReporter.generateCompactSummary(currentSnapshot);
+          notifier.notifySummary(compactSummary, watchOptions.prNumber);
+
           break;
         }
 
@@ -88,6 +140,15 @@ export async function execute(
         if (iteration > 0 && filteredEvents.length === 0 && shouldAutoStop(currentSnapshot)) {
           output.push("");
           output.push("ℹ️  No more activity detected. Stopping watch.");
+
+          // Generate summary
+          const summary = summaryReporter.generateSummary(currentSnapshot);
+          output.push(summary);
+
+          // Send summary notification
+          const compactSummary = summaryReporter.generateCompactSummary(currentSnapshot);
+          notifier.notifySummary(compactSummary, watchOptions.prNumber);
+
           break;
         }
 
@@ -96,14 +157,25 @@ export async function execute(
           await sleep(watchOptions.interval * 1000);
         }
       } catch (error) {
-        output.push(`⚠️  Error fetching PR data: ${error}`);
-        break;
+        output.push(`⚠️  Error: ${error}`);
+
+        // Check retry health
+        const health = retryHandler.getHealthStatus();
+        if (health === "unhealthy") {
+          output.push(`⚠️  Connection unhealthy after ${retryHandler.getFailureCount()} failures. Stopping watch.`);
+          break;
+        }
       }
     }
 
     if (iteration >= maxIterations) {
       output.push("");
       output.push("⚠️  Max monitoring duration reached. Stopping watch.");
+
+      if (previousSnapshot) {
+        const summary = summaryReporter.generateSummary(previousSnapshot);
+        output.push(summary);
+      }
     }
 
     return output.join("\n");
@@ -176,6 +248,91 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
+ * Execute multi-PR watch
+ */
+async function executeMultiPR(
+  prNumbers: number[],
+  options: {
+    notifyOn?: NotifyFilter;
+    interval?: string;
+    desktop?: boolean;
+    bell?: boolean;
+  }
+): Promise<string> {
+  const output: string[] = [];
+  const watcher = new MultiPRWatcher();
+  const notifier = new Notifier({
+    desktop: options.desktop ?? false,
+    terminal: options.bell ?? false,
+  });
+  const retryHandler = new RetryHandler();
+  const interval = parseInterval(options.interval || "30s");
+  const notifyOn = options.notifyOn || "all";
+
+  output.push(`🔍 Watching ${prNumbers.length} PRs: ${prNumbers.join(", ")}`);
+  output.push(`📊 Notify on: ${notifyOn}`);
+  output.push(`⏱️  Polling interval: ${interval}s`);
+  output.push("");
+
+  watcher.initialize(prNumbers);
+
+  let iteration = 0;
+  const maxIterations = 200;
+
+  while (iteration < maxIterations) {
+    try {
+      // Fetch all PRs with retry
+      const allEvents = await retryHandler.execute(
+        () => watcher.fetchAll(),
+        "Fetching all PRs"
+      );
+
+      // Report events for each PR
+      for (const [prNumber, events] of allEvents.entries()) {
+        const filteredEvents = filterEvents(events, notifyOn);
+        for (const event of filteredEvents) {
+          const formattedEvent = `PR #${prNumber}: ${event.message}`;
+          output.push(formatEvent({ ...event, message: formattedEvent }));
+          notifier.notify(event, prNumber);
+        }
+      }
+
+      // Check if all PRs are complete
+      if (watcher.areAllComplete()) {
+        output.push("");
+        output.push("✅ All PRs complete!");
+        output.push(watcher.getSummary());
+        notifier.notifySummary("All PRs complete!", prNumbers[0]);
+        break;
+      }
+
+      iteration++;
+
+      // Wait before next poll
+      if (iteration < maxIterations) {
+        await sleep(interval * 1000);
+      }
+    } catch (error) {
+      output.push(`⚠️  Error: ${error}`);
+
+      const health = retryHandler.getHealthStatus();
+      if (health === "unhealthy") {
+        output.push(`⚠️  Connection unhealthy. Stopping watch.`);
+        break;
+      }
+    }
+  }
+
+  if (iteration >= maxIterations) {
+    output.push("");
+    output.push("⚠️  Max monitoring duration reached.");
+    output.push(watcher.getSummary());
+  }
+
+  return output.join("\n");
+}
+
+/**
  * CLI interface for direct execution
  */
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -186,17 +343,20 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 PR Notifier - GitHub PR Observer
 
 Usage:
-  /pr-watch <PR-NUMBER> [options]
+  /pr-watch <PR-NUMBER[,PR-NUMBER,...]> [options]
 
 Options:
   --notify-on=<all|checks|reviews|comments>  Filter notifications (default: all)
   --interval=<30s|1m|etc>                    Polling interval (default: 30s)
   --until=<checks-pass|approved|merged>      Stop condition
+  --desktop                                  Enable macOS desktop notifications
+  --bell                                     Enable terminal bell/beep
 
 Examples:
   /pr-watch 1085
-  /pr-watch 1085 --notify-on=checks
-  /pr-watch 1085 --until=checks-pass --interval=15s
+  /pr-watch 1085 --notify-on=checks --desktop
+  /pr-watch 1085 --until=checks-pass --interval=15s --bell
+  /pr-watch 1085,1086,1087 --notify-on=checks
 `);
     process.exit(0);
   }

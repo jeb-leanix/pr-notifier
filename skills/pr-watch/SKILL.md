@@ -19,18 +19,23 @@ This skill activates when:
 ## How to Use
 
 ```bash
-# Basic - watch PR until CI/CD passes
+# Basic - watch single PR
 /pr-watch <PR-NUMBER>
+
+# Multiple PRs (comma-separated)
+/pr-watch <PR-NUMBER,PR-NUMBER,PR-NUMBER>
 
 # With options
 /pr-watch <PR-NUMBER> --notify-on=all|checks|reviews|comments
 /pr-watch <PR-NUMBER> --interval=30s
 /pr-watch <PR-NUMBER> --until=merged|approved|checks-pass
+/pr-watch <PR-NUMBER> --desktop --bell
 
 # Examples
 /pr-watch 1085
-/pr-watch 1085 --notify-on=checks
-/pr-watch 1085 --until=merged --interval=60s
+/pr-watch 1085 --notify-on=checks --desktop
+/pr-watch 1085 --until=merged --interval=60s --bell
+/pr-watch 1085,1086,1087 --notify-on=checks
 ```
 
 ## What Gets Monitored
@@ -88,11 +93,23 @@ Stop monitoring when condition is met:
 - `merged`: Stop when PR is merged
 - `closed`: Stop when PR is closed
 
+### --desktop
+Enable macOS desktop notifications (Notification Center):
+- Shows important events as system notifications
+- Includes summary when monitoring completes
+- Uses different sounds for success/error/warning
+
+### --bell
+Enable terminal bell/beep:
+- Beeps on important events (success, errors)
+- Double beep when monitoring completes
+- Non-intrusive audio feedback
+
 ## Examples
 
-**Wait for CI/CD to pass:**
+**Wait for CI/CD to pass with notifications:**
 ```
-/pr-watch 1085 --notify-on=checks --until=checks-pass
+/pr-watch 1085 --notify-on=checks --until=checks-pass --desktop --bell
 ```
 
 **Monitor reviews only:**
@@ -102,7 +119,17 @@ Stop monitoring when condition is met:
 
 **Watch everything until merged:**
 ```
-/pr-watch 1085 --until=merged
+/pr-watch 1085 --until=merged --desktop
+```
+
+**Watch multiple PRs:**
+```
+/pr-watch 1085,1086,1087 --notify-on=checks --desktop
+```
+
+**Quick check with desktop notification:**
+```
+/pr-watch 1085 --interval=15s --desktop
 ```
 
 ## Requirements
