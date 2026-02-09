@@ -1,13 +1,8 @@
 {
   "name": "pr-notifier",
-  "version": "1.0.0",
   "description": "GitHub PR observer - monitors CI/CD checks, reviews, and comments",
-  "author": "Jens Beau",
-  "main": "../build/index.js",
-  "skills": [
-    {
-      "name": "pr-watch",
-      "description": "Watch a GitHub PR for CI/CD status, reviews, and comments"
-    }
-  ]
+  "version": "1.0.0",
+  "author": {
+    "name": "Jens Beau"
+  }
 }
