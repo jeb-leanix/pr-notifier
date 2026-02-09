@@ -4,11 +4,17 @@ A Claude Code plugin that monitors GitHub Pull Requests and notifies you about C
 
 ## Features
 
+- 🔑 **Jira Key Support**: Use ticket keys like `TAK-1256` instead of PR numbers
 - 🔄 **CI/CD Monitoring**: Track build, test, and workflow status
 - 👀 **Review Tracking**: Get notified when reviews are submitted
 - 💬 **Comment Alerts**: See new comments as they arrive
 - ⚠️ **Merge Conflict Detection**: Know immediately when conflicts occur
 - 🎯 **Smart Auto-Stop**: Stops watching when conditions are met
+- 🔔 **Desktop Notifications**: macOS Notification Center + terminal bell
+- 📊 **Summary Reports**: Statistics, timings, and insights
+- 🔢 **Multi-PR Support**: Watch multiple PRs simultaneously
+- 🔄 **Smart Retry**: Exponential backoff with health monitoring
+- 🧠 **PR Analysis**: Detects slow checks and provides insights
 - ⚙️ **Configurable**: Filter notifications and set polling intervals
 
 ## Installation
@@ -52,27 +58,33 @@ npm run build
 
 ### Basic
 
-Watch a PR until all checks pass:
+Watch a PR using number or Jira key:
 
 ```
 /pr-watch 1085
+/pr-watch TAK-1674
 ```
 
 ### With Options
 
+**Using Jira ticket keys:**
+```
+/pr-watch TAK-1674 --desktop --bell
+```
+
 **Monitor only CI/CD checks:**
 ```
-/pr-watch 1085 --notify-on=checks
+/pr-watch TAK-1674 --notify-on=checks --desktop
 ```
 
 **Stop when checks pass:**
 ```
-/pr-watch 1085 --until=checks-pass
+/pr-watch 1085 --until=checks-pass --bell
 ```
 
 **Custom polling interval:**
 ```
-/pr-watch 1085 --interval=15s
+/pr-watch TAK-1256 --interval=15s --desktop
 ```
 
 **Wait for approval:**
@@ -80,7 +92,16 @@ Watch a PR until all checks pass:
 /pr-watch 1085 --notify-on=reviews --until=approved
 ```
 
+**Watch multiple PRs (mixed):**
+```
+/pr-watch 1085,TAK-1256,1087 --notify-on=checks
+```
+
 ### Options
+
+- `<PR-NUMBER|JIRA-KEY>`: PR number (e.g., `1085`) or Jira ticket key (e.g., `TAK-1674`)
+  - Supports comma-separated list for multiple PRs
+  - Auto-resolves Jira keys to PR numbers
 
 - `--notify-on=<filter>`: What to report
   - `all` (default): Everything
@@ -98,6 +119,9 @@ Watch a PR until all checks pass:
   - `approved`: Stop when PR is approved
   - `merged`: Stop when PR is merged
   - `closed`: Stop when PR is closed
+
+- `--desktop`: Enable macOS desktop notifications
+- `--bell`: Enable terminal bell/beep
 
 ## Example Output
 

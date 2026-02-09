@@ -19,23 +19,28 @@ This skill activates when:
 ## How to Use
 
 ```bash
-# Basic - watch single PR
-/pr-watch <PR-NUMBER>
+# Basic - watch single PR (by number or Jira key)
+/pr-watch <PR-NUMBER|JIRA-KEY>
 
-# Multiple PRs (comma-separated)
-/pr-watch <PR-NUMBER,PR-NUMBER,PR-NUMBER>
+# Using Jira ticket keys
+/pr-watch TAK-1256
+/pr-watch TAK-1674
+
+# Multiple PRs (comma-separated, mixed)
+/pr-watch <PR-NUMBER,JIRA-KEY,PR-NUMBER>
 
 # With options
-/pr-watch <PR-NUMBER> --notify-on=all|checks|reviews|comments
-/pr-watch <PR-NUMBER> --interval=30s
-/pr-watch <PR-NUMBER> --until=merged|approved|checks-pass
-/pr-watch <PR-NUMBER> --desktop --bell
+/pr-watch <IDENTIFIER> --notify-on=all|checks|reviews|comments
+/pr-watch <IDENTIFIER> --interval=30s
+/pr-watch <IDENTIFIER> --until=merged|approved|checks-pass
+/pr-watch <IDENTIFIER> --desktop --bell
 
 # Examples
 /pr-watch 1085
-/pr-watch 1085 --notify-on=checks --desktop
+/pr-watch TAK-1674
+/pr-watch TAK-1674 --notify-on=checks --desktop
 /pr-watch 1085 --until=merged --interval=60s --bell
-/pr-watch 1085,1086,1087 --notify-on=checks
+/pr-watch 1085,TAK-1256,1087 --notify-on=checks
 ```
 
 ## What Gets Monitored
@@ -107,9 +112,15 @@ Enable terminal bell/beep:
 
 ## Examples
 
+**Watch using Jira ticket key:**
+```
+/pr-watch TAK-1674
+/pr-watch TAK-1256 --desktop --bell
+```
+
 **Wait for CI/CD to pass with notifications:**
 ```
-/pr-watch 1085 --notify-on=checks --until=checks-pass --desktop --bell
+/pr-watch TAK-1674 --notify-on=checks --until=checks-pass --desktop --bell
 ```
 
 **Monitor reviews only:**
@@ -119,24 +130,39 @@ Enable terminal bell/beep:
 
 **Watch everything until merged:**
 ```
-/pr-watch 1085 --until=merged --desktop
+/pr-watch TAK-1674 --until=merged --desktop
 ```
 
-**Watch multiple PRs:**
+**Watch multiple PRs (mixed identifiers):**
 ```
-/pr-watch 1085,1086,1087 --notify-on=checks --desktop
+/pr-watch 1085,TAK-1256,1087 --notify-on=checks --desktop
+/pr-watch TAK-1674,TAK-1675,TAK-1676
 ```
 
 **Quick check with desktop notification:**
 ```
-/pr-watch 1085 --interval=15s --desktop
+/pr-watch TAK-1674 --interval=15s --desktop
 ```
 
 ## Requirements
 
 - GitHub CLI (`gh`) must be installed and authenticated
 - Access to the repository
-- Valid PR number
+- Valid PR number or Jira ticket key (e.g., TAK-1234)
+
+## How Jira Key Resolution Works
+
+When you provide a Jira ticket key (e.g., `TAK-1674`), the plugin:
+
+1. Searches recent PRs (last 50) for the ticket key
+2. Checks in this order:
+   - **Branch name** (most reliable): `TAK-1674-fix-issue`
+   - **PR title**: `TAK-1674: Fix the bug`
+   - **PR body/description**: Contains `TAK-1674` or link to ticket
+3. Uses the first match found
+4. Shows resolution info: `TAK-1674 → PR #1085`
+
+**Note:** If multiple PRs exist for the same ticket, it will use the first match (typically the most recent one).
 
 ## Tips
 

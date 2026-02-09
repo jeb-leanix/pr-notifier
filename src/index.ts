@@ -13,6 +13,7 @@ import { SummaryReporter } from "./summary-reporter.js";
 import { MultiPRWatcher } from "./multi-pr-watcher.js";
 import { RetryHandler } from "./retry-handler.js";
 import { PRAnalyzer } from "./pr-analyzer.js";
+import { PRResolver } from "./pr-resolver.js";
 import { WatchOptions, NotifyFilter, UntilCondition, PRSnapshot, PREvent } from "./types.js";
 
 interface SkillContext {
@@ -26,7 +27,7 @@ interface SkillContext {
  */
 export async function execute(
   context: SkillContext,
-  prNumbers: string,
+  prIdentifiers: string,
   options: {
     notifyOn?: NotifyFilter;
     interval?: string;
@@ -35,16 +36,36 @@ export async function execute(
     bell?: boolean;
   } = {}
 ): Promise<string> {
-  // Parse PR numbers (supports comma-separated list)
-  const prNumberList = prNumbers.split(",").map((n) => parseInt(n.trim(), 10));
+  // Parse identifiers (supports comma-separated list)
+  const identifierList = prIdentifiers.split(",").map((id) => id.trim());
 
-  if (prNumberList.some((n) => isNaN(n))) {
-    return `❌ Invalid PR number(s): ${prNumbers}`;
+  // Resolve identifiers to PR numbers (handles both numbers and Jira keys)
+  const resolver = new PRResolver();
+  let prNumberList: number[];
+
+  try {
+    prNumberList = await resolver.resolveMultiple(identifierList);
+  } catch (error) {
+    return `❌ Failed to resolve PR identifier(s): ${error}`;
+  }
+
+  // Show resolution info if Jira keys were used
+  const output: string[] = [];
+  const hasJiraKeys = identifierList.some((id) => isNaN(parseInt(id, 10)));
+  if (hasJiraKeys) {
+    output.push("🔍 Resolved:");
+    for (let i = 0; i < identifierList.length; i++) {
+      if (identifierList[i] !== prNumberList[i].toString()) {
+        output.push(`   ${identifierList[i]} → PR #${prNumberList[i]}`);
+      }
+    }
+    output.push("");
   }
 
   // Multi-PR mode
   if (prNumberList.length > 1) {
-    return executeMultiPR(prNumberList, options);
+    const result = await executeMultiPR(prNumberList, options);
+    return output.concat(result).join("\n");
   }
 
   // Single PR mode
@@ -69,8 +90,6 @@ export async function execute(
     let previousSnapshot: PRSnapshot | null = null;
     let iteration = 0;
     const maxIterations = 200; // Prevent infinite loops (200 * 30s = 100 minutes max)
-
-    const output: string[] = [];
 
     output.push(`🔍 Watching PR #${watchOptions.prNumber}`);
     output.push(`📊 Notify on: ${watchOptions.notifyOn}`);
@@ -269,9 +288,15 @@ async function executeMultiPR(
   const interval = parseInterval(options.interval || "30s");
   const notifyOn = options.notifyOn || "all";
 
-  output.push(`🔍 Watching ${prNumbers.length} PRs: ${prNumbers.join(", ")}`);
+  output.push(`🔍 Watching ${prNumbers.length} PRs: #${prNumbers.join(", #")}`);
   output.push(`📊 Notify on: ${notifyOn}`);
   output.push(`⏱️  Polling interval: ${interval}s`);
+  if (options.desktop || options.bell) {
+    const notifyTypes: string[] = [];
+    if (options.desktop) notifyTypes.push("desktop");
+    if (options.bell) notifyTypes.push("terminal");
+    output.push(`🔔 Notifications: ${notifyTypes.join(", ")}`);
+  }
   output.push("");
 
   watcher.initialize(prNumbers);
@@ -343,7 +368,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 PR Notifier - GitHub PR Observer
 
 Usage:
-  /pr-watch <PR-NUMBER[,PR-NUMBER,...]> [options]
+  /pr-watch <PR-NUMBER|JIRA-KEY[,...]> [options]
+
+Arguments:
+  <PR-NUMBER|JIRA-KEY>  PR number (1085) or Jira ticket (TAK-1674)
+                        Supports comma-separated list for multiple PRs
 
 Options:
   --notify-on=<all|checks|reviews|comments>  Filter notifications (default: all)
@@ -353,10 +382,10 @@ Options:
   --bell                                     Enable terminal bell/beep
 
 Examples:
-  /pr-watch 1085
+  /pr-watch TAK-1674
   /pr-watch 1085 --notify-on=checks --desktop
-  /pr-watch 1085 --until=checks-pass --interval=15s --bell
-  /pr-watch 1085,1086,1087 --notify-on=checks
+  /pr-watch TAK-1674 --until=checks-pass --interval=15s --bell
+  /pr-watch 1085,TAK-1256,1087 --notify-on=checks --desktop
 `);
     process.exit(0);
   }
