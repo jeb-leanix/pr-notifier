@@ -14,6 +14,7 @@ import { MultiPRWatcher } from "./multi-pr-watcher.js";
 import { RetryHandler } from "./retry-handler.js";
 import { PRAnalyzer } from "./pr-analyzer.js";
 import { PRResolver } from "./pr-resolver.js";
+import { JiraIntegration } from "./jira-integration.js";
 import { WatchOptions, NotifyFilter, UntilCondition, PRSnapshot, PREvent } from "./types.js";
 
 interface SkillContext {
@@ -151,6 +152,12 @@ export async function execute(
         if (watchOptions.until && shouldStopWatching(currentSnapshot, watchOptions.until)) {
           output.push("");
           output.push(`✅ Condition met: ${watchOptions.until}`);
+
+          // Auto-transition Jira ticket if checks passed
+          if (watchOptions.until === "checks-pass") {
+            await handleJiraTransition(currentSnapshot, watchOptions.prNumber, output);
+          }
+
           output.push("Stopping watch.");
 
           // Generate summary
@@ -242,6 +249,40 @@ export async function execute(
     );
 
     return errorDetails;
+  }
+}
+
+/**
+ * Handle Jira ticket transition when checks pass
+ */
+async function handleJiraTransition(snapshot: PRSnapshot, prNumber: number, output: string[]): Promise<any> {
+  try {
+    const jira = new JiraIntegration();
+
+    // Get branch name
+    const branchName = await jira.getBranchName(prNumber);
+
+    // Extract Jira ticket key
+    const ticketKey = jira.extractTicketKey(snapshot.title, branchName || undefined);
+
+    if (!ticketKey) {
+      output.push("ℹ️  No Jira ticket found in PR title or branch name");
+      return null;
+    }
+
+    // Get PR URL
+    const prUrl = `https://github.com/leanix/import-export/pull/${prNumber}`;
+
+    // Request Jira transition (returns action object for Claude Code to handle)
+    const actionRequest = await jira.transitionToReview(ticketKey, prUrl);
+
+    output.push(`✅ Jira action requested: ${ticketKey} → Review`);
+
+    return actionRequest;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    output.push(`⚠️  Jira transition failed: ${errorMessage}`);
+    return null;
   }
 }
 

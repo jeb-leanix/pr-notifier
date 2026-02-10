@@ -13,7 +13,7 @@ export class PRFetcher {
     try {
       // Fetch PR details
       const prData = JSON.parse(
-        execSync(`gh pr view ${prNumber} --json number,title,state,isDraft,mergeable,reviewers`, {
+        execSync(`gh pr view ${prNumber} --json number,title,state,isDraft,mergeable,reviewRequests`, {
           encoding: "utf-8",
         })
       );
@@ -48,7 +48,7 @@ export class PRFetcher {
         checks: this.parseChecks(checksData.statusCheckRollup),
         reviews: this.parseReviews(reviewsData),
         comments: this.parseComments(commentsData),
-        reviewers: prData.reviewers?.map((r: any) => r.login) || [],
+        reviewers: prData.reviewRequests?.map((r: any) => r.login) || [],
         timestamp: new Date(),
       };
     } catch (error) {
