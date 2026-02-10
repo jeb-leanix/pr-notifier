@@ -35,6 +35,7 @@ export async function execute(
     until?: UntilCondition;
     desktop?: boolean;
     bell?: boolean;
+    noJiraTransition?: boolean;
   } = {}
 ): Promise<string> {
   // Parse identifiers (supports comma-separated list)
@@ -153,8 +154,8 @@ export async function execute(
           output.push("");
           output.push(`✅ Condition met: ${watchOptions.until}`);
 
-          // Auto-transition Jira ticket if checks passed
-          if (watchOptions.until === "checks-pass") {
+          // Auto-transition Jira ticket if checks passed (unless disabled)
+          if (watchOptions.until === "checks-pass" && !options.noJiraTransition) {
             await handleJiraTransition(currentSnapshot, watchOptions.prNumber, output);
           }
 
@@ -358,6 +359,7 @@ async function executeMultiPR(
     interval?: string;
     desktop?: boolean;
     bell?: boolean;
+    noJiraTransition?: boolean;
   }
 ): Promise<string> {
   const output: string[] = [];
@@ -478,12 +480,14 @@ Options:
   --until=<checks-pass|approved|merged>      Stop condition
   --desktop                                  Enable macOS desktop notifications
   --bell                                     Enable terminal bell/beep
+  --no-jira-transition                       Disable automatic Jira ticket transition
 
 Examples:
   /pr-watch TAK-1674
   /pr-watch 1085 --notify-on=checks --desktop
   /pr-watch TAK-1674 --until=checks-pass --interval=15s --bell
   /pr-watch 1085,TAK-1256,1087 --notify-on=checks --desktop
+  /pr-watch TAK-1674 --until=checks-pass --no-jira-transition
 `);
     process.exit(0);
   }

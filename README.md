@@ -100,6 +100,11 @@ Watch a PR using number or Jira key:
 /pr-watch 1085,TAK-1256,1087 --notify-on=checks
 ```
 
+**Without Jira auto-transition:**
+```
+/pr-watch TAK-1674 --until=checks-pass --no-jira-transition
+```
+
 ### Options
 
 - `<PR-NUMBER|JIRA-KEY>`: PR number (e.g., `1085`) or Jira ticket key (e.g., `TAK-1674`)
@@ -125,6 +130,7 @@ Watch a PR using number or Jira key:
 
 - `--desktop`: Enable macOS desktop notifications
 - `--bell`: Enable terminal bell/beep
+- `--no-jira-transition`: Disable automatic Jira ticket transition to "In Review"
 
 ## Example Output
 
