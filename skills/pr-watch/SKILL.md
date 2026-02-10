@@ -33,14 +33,17 @@ This skill activates when:
 /pr-watch <IDENTIFIER> --notify-on=all|checks|reviews|comments
 /pr-watch <IDENTIFIER> --interval=30s
 /pr-watch <IDENTIFIER> --until=merged|approved|checks-pass
-/pr-watch <IDENTIFIER> --desktop --bell
+/pr-watch <IDENTIFIER> --jira-ticket=TAK-XXXX
+/pr-watch <IDENTIFIER> --no-desktop --bell
+/pr-watch <IDENTIFIER> --use-osascript
 
 # Examples
 /pr-watch 1085
 /pr-watch TAK-1674
-/pr-watch TAK-1674 --notify-on=checks --desktop
+/pr-watch TAK-1674 --notify-on=checks
 /pr-watch 1085 --until=merged --interval=60s --bell
 /pr-watch 1085,TAK-1256,1087 --notify-on=checks
+/pr-watch TAK-1674 --jira-ticket=TAK-1674 --until=checks-pass --bell
 ```
 
 ## What Gets Monitored
@@ -98,17 +101,29 @@ Stop monitoring when condition is met:
 - `merged`: Stop when PR is merged
 - `closed`: Stop when PR is closed
 
-### --desktop
+### --jira-ticket
+Automatically transition Jira ticket to "In Review" when all checks pass:
+- `--jira-ticket=TAK-XXXX`: Set ticket status to "In Review"
+- Works with `--until=checks-pass` to auto-stop after transition
+- Sends desktop notification when ticket status is updated
+
+### --desktop (default: enabled)
 Enable macOS desktop notifications (Notification Center):
-- Shows important events as system notifications
-- Includes summary when monitoring completes
-- Uses different sounds for success/error/warning
+- Shows important events as system notifications with custom icons
+- Uses `terminal-notifier` for rich notifications with clickable PR links
+- Includes GitHub/Jira icons for better visual feedback
+- Use `--no-desktop` to disable
 
 ### --bell
 Enable terminal bell/beep:
 - Beeps on important events (success, errors)
 - Double beep when monitoring completes
 - Non-intrusive audio feedback
+
+### --use-osascript
+Force use of basic osascript notifications instead of terminal-notifier:
+- Fallback for systems without terminal-notifier
+- No custom icons, but still functional
 
 ## Examples
 
@@ -118,9 +133,10 @@ Enable terminal bell/beep:
 /pr-watch TAK-1256 --desktop --bell
 ```
 
-**Wait for CI/CD to pass with notifications:**
+**Wait for CI/CD to pass and auto-transition Jira ticket:**
 ```
-/pr-watch TAK-1674 --notify-on=checks --until=checks-pass --desktop --bell
+/pr-watch TAK-1674 --jira-ticket=TAK-1674 --until=checks-pass --bell
+/pr-watch 1089 --jira-ticket=TAK-1679 --notify-on=checks --until=checks-pass
 ```
 
 **Monitor reviews only:**
@@ -130,18 +146,18 @@ Enable terminal bell/beep:
 
 **Watch everything until merged:**
 ```
-/pr-watch TAK-1674 --until=merged --desktop
+/pr-watch TAK-1674 --until=merged
 ```
 
 **Watch multiple PRs (mixed identifiers):**
 ```
-/pr-watch 1085,TAK-1256,1087 --notify-on=checks --desktop
+/pr-watch 1085,TAK-1256,1087 --notify-on=checks
 /pr-watch TAK-1674,TAK-1675,TAK-1676
 ```
 
-**Quick check with desktop notification:**
+**Quick check with fast polling:**
 ```
-/pr-watch TAK-1674 --interval=15s --desktop
+/pr-watch TAK-1674 --interval=15s
 ```
 
 ## Requirements
@@ -149,6 +165,8 @@ Enable terminal bell/beep:
 - GitHub CLI (`gh`) must be installed and authenticated
 - Access to the repository
 - Valid PR number or Jira ticket key (e.g., TAK-1234)
+- Optional: `terminal-notifier` for rich macOS notifications (install via `brew install terminal-notifier`)
+- Optional: Jira MCP integration for auto-transition feature
 
 ## How Jira Key Resolution Works
 

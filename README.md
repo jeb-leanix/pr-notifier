@@ -10,7 +10,8 @@ A Claude Code plugin that monitors GitHub Pull Requests and notifies you about C
 - 💬 **Comment Alerts**: See new comments as they arrive
 - ⚠️ **Merge Conflict Detection**: Know immediately when conflicts occur
 - 🎯 **Smart Auto-Stop**: Stops watching when conditions are met
-- 🔔 **Desktop Notifications**: macOS Notification Center + terminal bell
+- 🔔 **Rich Desktop Notifications**: macOS notifications with GitHub/Jira icons via terminal-notifier
+- 🎫 **Auto-Jira Transition**: Automatically move tickets to "In Review" when checks pass
 - 📊 **Summary Reports**: Statistics, timings, and insights
 - 🔢 **Multi-PR Support**: Watch multiple PRs simultaneously
 - 🔄 **Smart Retry**: Exponential backoff with health monitoring
