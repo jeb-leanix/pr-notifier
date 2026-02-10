@@ -17,6 +17,8 @@ A Claude Code plugin that monitors GitHub Pull Requests and notifies you about C
 - 🔄 **Smart Retry**: Exponential backoff with health monitoring
 - 🧠 **PR Analysis**: Detects slow checks and provides insights
 - ⚙️ **Configurable**: Filter notifications and set polling intervals
+- 🚨 **Error Notifications**: Get alerted immediately if the watcher crashes or fails
+- 💓 **Heartbeat Monitoring**: Regular status updates to confirm the watcher is still running
 
 ## Installation
 

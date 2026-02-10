@@ -95,4 +95,29 @@ export class Notifier {
       process.stdout.write("\x07\x07"); // Double beep for completion
     }
   }
+
+  /**
+   * Send error notification (always sends, regardless of options)
+   * This is for critical errors that need user attention
+   */
+  notifyError(title: string, message: string, prNumber: number): void {
+    // Desktop notification for errors (always show if enabled)
+    if (this.options.desktop) {
+      try {
+        const cleanMessage = message.replace(/[🔄✅❌⚠️💬🎯🔧👀🎉🚫]/g, "").trim();
+        const script = `display notification "${this.escapeForAppleScript(cleanMessage)}" with title "⚠️ ${title}" sound name "Basso"`;
+        execSync(`osascript -e '${script}'`, { stdio: "ignore" });
+      } catch (error) {
+        console.warn("Failed to send error notification:", error);
+      }
+    }
+
+    // Terminal bell for errors (always if terminal is enabled)
+    if (this.options.terminal) {
+      process.stdout.write("\x07\x07\x07"); // Triple beep for errors
+    }
+
+    // Also log to console for debugging
+    console.error(`[PR Watcher] ${title}: ${message}`);
+  }
 }

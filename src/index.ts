@@ -90,6 +90,8 @@ export async function execute(
     let previousSnapshot: PRSnapshot | null = null;
     let iteration = 0;
     const maxIterations = 200; // Prevent infinite loops (200 * 30s = 100 minutes max)
+    const heartbeatInterval = 10; // Send heartbeat every N iterations
+    let lastHeartbeat = Date.now();
 
     output.push(`🔍 Watching PR #${watchOptions.prNumber}`);
     output.push(`📊 Notify on: ${watchOptions.notifyOn}`);
@@ -135,6 +137,16 @@ export async function execute(
           }
         }
 
+        // Send heartbeat (every N iterations)
+        if (iteration > 0 && iteration % heartbeatInterval === 0) {
+          const now = Date.now();
+          const elapsedMinutes = Math.floor((now - lastHeartbeat) / 60000);
+          if (elapsedMinutes > 0) {
+            output.push(`💓 Still watching PR #${watchOptions.prNumber} (${elapsedMinutes}m since last check)`);
+            lastHeartbeat = now;
+          }
+        }
+
         // Check if we should stop watching
         if (watchOptions.until && shouldStopWatching(currentSnapshot, watchOptions.until)) {
           output.push("");
@@ -176,12 +188,28 @@ export async function execute(
           await sleep(watchOptions.interval * 1000);
         }
       } catch (error) {
-        output.push(`⚠️  Error: ${error}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        output.push(`⚠️  Error: ${errorMessage}`);
+
+        // Send critical error notification
+        notifier.notifyError(
+          `PR Watcher Error`,
+          `Failed to monitor PR #${watchOptions.prNumber}: ${errorMessage}`,
+          watchOptions.prNumber
+        );
 
         // Check retry health
         const health = retryHandler.getHealthStatus();
         if (health === "unhealthy") {
           output.push(`⚠️  Connection unhealthy after ${retryHandler.getFailureCount()} failures. Stopping watch.`);
+
+          // Send final error notification
+          notifier.notifyError(
+            `PR Watcher Stopped`,
+            `Connection unhealthy after ${retryHandler.getFailureCount()} failures. PR #${watchOptions.prNumber}`,
+            watchOptions.prNumber
+          );
+
           break;
         }
       }
@@ -200,7 +228,20 @@ export async function execute(
     return output.join("\n");
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return `❌ Error watching PR: ${errorMessage}\n\nPlease ensure:\n- GitHub CLI (gh) is installed and authenticated\n- You have access to the repository\n- The PR number is correct`;
+    const errorDetails = `❌ Error watching PR: ${errorMessage}\n\nPlease ensure:\n- GitHub CLI (gh) is installed and authenticated\n- You have access to the repository\n- The PR number is correct`;
+
+    // Send critical error notification for unexpected failures
+    const notifier = new Notifier({
+      desktop: options.desktop ?? false,
+      terminal: options.bell ?? false,
+    });
+    notifier.notifyError(
+      `PR Watcher Crashed`,
+      `Unexpected error for PR #${watchOptions.prNumber}: ${errorMessage}`,
+      watchOptions.prNumber
+    );
+
+    return errorDetails;
   }
 }
 
@@ -338,11 +379,27 @@ async function executeMultiPR(
         await sleep(interval * 1000);
       }
     } catch (error) {
-      output.push(`⚠️  Error: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      output.push(`⚠️  Error: ${errorMessage}`);
+
+      // Send error notification for multi-PR watch
+      notifier.notifyError(
+        `Multi-PR Watcher Error`,
+        `Failed to monitor PRs: ${errorMessage}`,
+        prNumbers[0]
+      );
 
       const health = retryHandler.getHealthStatus();
       if (health === "unhealthy") {
         output.push(`⚠️  Connection unhealthy. Stopping watch.`);
+
+        // Send final error notification
+        notifier.notifyError(
+          `Multi-PR Watcher Stopped`,
+          `Connection unhealthy. Monitoring stopped.`,
+          prNumbers[0]
+        );
+
         break;
       }
     }
