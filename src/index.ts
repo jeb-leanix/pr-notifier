@@ -34,6 +34,7 @@ export async function execute(
     interval?: string;
     until?: UntilCondition;
     desktop?: boolean;
+    noDesktop?: boolean;
     bell?: boolean;
     noJiraTransition?: boolean;
   } = {}
@@ -82,7 +83,7 @@ export async function execute(
     const fetcher = new PRFetcher();
     const detector = new EventDetector();
     const notifier = new Notifier({
-      desktop: options.desktop ?? false,
+      desktop: options.noDesktop ? false : (options.desktop ?? true),  // Desktop notifications ON by default
       terminal: options.bell ?? false,
     });
     const summaryReporter = new SummaryReporter();
@@ -101,10 +102,12 @@ export async function execute(
     if (watchOptions.until) {
       output.push(`🎯 Until: ${watchOptions.until}`);
     }
-    if (options.desktop || options.bell) {
-      const notifyTypes: string[] = [];
-      if (options.desktop) notifyTypes.push("desktop");
-      if (options.bell) notifyTypes.push("terminal");
+    // Show notification status
+    const notifyTypes: string[] = [];
+    const desktopEnabled = options.noDesktop ? false : (options.desktop ?? true);
+    if (desktopEnabled) notifyTypes.push("desktop");
+    if (options.bell) notifyTypes.push("terminal");
+    if (notifyTypes.length > 0) {
       output.push(`🔔 Notifications: ${notifyTypes.join(", ")}`);
     }
     output.push("");
@@ -240,7 +243,7 @@ export async function execute(
 
     // Send critical error notification for unexpected failures
     const notifier = new Notifier({
-      desktop: options.desktop ?? false,
+      desktop: options.noDesktop ? false : (options.desktop ?? true),  // Desktop notifications ON by default
       terminal: options.bell ?? false,
     });
     notifier.notifyError(
@@ -358,6 +361,7 @@ async function executeMultiPR(
     notifyOn?: NotifyFilter;
     interval?: string;
     desktop?: boolean;
+    noDesktop?: boolean;
     bell?: boolean;
     noJiraTransition?: boolean;
   }
@@ -365,7 +369,7 @@ async function executeMultiPR(
   const output: string[] = [];
   const watcher = new MultiPRWatcher();
   const notifier = new Notifier({
-    desktop: options.desktop ?? false,
+    desktop: options.noDesktop ? false : (options.desktop ?? true),  // Desktop notifications ON by default
     terminal: options.bell ?? false,
   });
   const retryHandler = new RetryHandler();
@@ -375,10 +379,12 @@ async function executeMultiPR(
   output.push(`🔍 Watching ${prNumbers.length} PRs: #${prNumbers.join(", #")}`);
   output.push(`📊 Notify on: ${notifyOn}`);
   output.push(`⏱️  Polling interval: ${interval}s`);
-  if (options.desktop || options.bell) {
-    const notifyTypes: string[] = [];
-    if (options.desktop) notifyTypes.push("desktop");
-    if (options.bell) notifyTypes.push("terminal");
+  // Show notification status
+  const notifyTypes: string[] = [];
+  const desktopEnabled = options.noDesktop ? false : (options.desktop ?? true);
+  if (desktopEnabled) notifyTypes.push("desktop");
+  if (options.bell) notifyTypes.push("terminal");
+  if (notifyTypes.length > 0) {
     output.push(`🔔 Notifications: ${notifyTypes.join(", ")}`);
   }
   output.push("");
@@ -478,15 +484,17 @@ Options:
   --notify-on=<all|checks|reviews|comments>  Filter notifications (default: all)
   --interval=<30s|1m|etc>                    Polling interval (default: 30s)
   --until=<checks-pass|approved|merged>      Stop condition
-  --desktop                                  Enable macOS desktop notifications
+  --desktop                                  Enable macOS desktop notifications (default: ON)
+  --no-desktop                               Disable desktop notifications
   --bell                                     Enable terminal bell/beep
   --no-jira-transition                       Disable automatic Jira ticket transition
 
 Examples:
   /pr-watch TAK-1674
-  /pr-watch 1085 --notify-on=checks --desktop
+  /pr-watch 1085 --notify-on=checks
   /pr-watch TAK-1674 --until=checks-pass --interval=15s --bell
-  /pr-watch 1085,TAK-1256,1087 --notify-on=checks --desktop
+  /pr-watch 1085,TAK-1256,1087 --notify-on=checks
+  /pr-watch TAK-1674 --until=checks-pass --no-desktop
   /pr-watch TAK-1674 --until=checks-pass --no-jira-transition
 `);
     process.exit(0);

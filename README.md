@@ -70,14 +70,15 @@ Watch a PR using number or Jira key:
 
 ### With Options
 
-**Using Jira ticket keys:**
+**Using Jira ticket keys (desktop notifications ON by default):**
 ```
-/pr-watch TAK-1674 --desktop --bell
+/pr-watch TAK-1674
+/pr-watch TAK-1674 --bell
 ```
 
 **Monitor only CI/CD checks:**
 ```
-/pr-watch TAK-1674 --notify-on=checks --desktop
+/pr-watch TAK-1674 --notify-on=checks
 ```
 
 **Stop when checks pass:**
@@ -87,7 +88,7 @@ Watch a PR using number or Jira key:
 
 **Custom polling interval:**
 ```
-/pr-watch TAK-1256 --interval=15s --desktop
+/pr-watch TAK-1256 --interval=15s
 ```
 
 **Wait for approval:**
@@ -98,6 +99,11 @@ Watch a PR using number or Jira key:
 **Watch multiple PRs (mixed):**
 ```
 /pr-watch 1085,TAK-1256,1087 --notify-on=checks
+```
+
+**Without desktop notifications:**
+```
+/pr-watch TAK-1674 --until=checks-pass --no-desktop
 ```
 
 **Without Jira auto-transition:**
@@ -128,7 +134,8 @@ Watch a PR using number or Jira key:
   - `merged`: Stop when PR is merged
   - `closed`: Stop when PR is closed
 
-- `--desktop`: Enable macOS desktop notifications
+- `--desktop`: Enable macOS desktop notifications (default: **ON**)
+- `--no-desktop`: Disable desktop notifications
 - `--bell`: Enable terminal bell/beep
 - `--no-jira-transition`: Disable automatic Jira ticket transition to "In Review"
 
@@ -180,10 +187,12 @@ node build/index.js --help
 
 ## Tips
 
+- Desktop notifications are **ON by default** - use `--no-desktop` to disable them
 - Use `--notify-on=checks` when you only care about CI/CD
 - Set `--until=checks-pass` to auto-stop when ready for review
 - Longer `--interval` values reduce GitHub API usage
 - The plugin auto-stops when PR is merged or all conditions are met
+- Jira ticket auto-transition to "In Review" happens when `--until=checks-pass` is met
 
 ## Troubleshooting
 
