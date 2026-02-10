@@ -1,0 +1,57 @@
+{
+  "name": "pr-notifier",
+  "version": "1.0.0",
+  "description": "Monitor GitHub PR status - CI/CD checks, reviews, comments, and merge conflicts",
+  "author": "Jens Beau",
+  "entrypoint": "build/index.js",
+  "runtime": "node",
+  "category": "productivity",
+  "keywords": ["github", "pr", "ci-cd", "notifications", "monitoring"],
+  "commands": [
+    {
+      "name": "pr-watch",
+      "description": "Monitor a GitHub PR for CI/CD status, reviews, and comments",
+      "usage": "/pr-watch <PR-NUMBER|JIRA-KEY> [options]",
+      "examples": [
+        "/pr-watch 1085",
+        "/pr-watch TAK-1674",
+        "/pr-watch TAK-1674 --notify-on=checks --desktop",
+        "/pr-watch 1085 --until=checks-pass --interval=15s --bell",
+        "/pr-watch 1085,TAK-1256,1087 --notify-on=checks --desktop"
+      ],
+      "options": [
+        {
+          "name": "notify-on",
+          "type": "string",
+          "choices": ["all", "checks", "reviews", "comments"],
+          "default": "all",
+          "description": "Filter what events to report"
+        },
+        {
+          "name": "interval",
+          "type": "string",
+          "default": "30s",
+          "description": "Polling interval (e.g., 15s, 30s, 60s, 1m)"
+        },
+        {
+          "name": "until",
+          "type": "string",
+          "choices": ["checks-pass", "approved", "merged", "closed"],
+          "description": "Auto-stop condition"
+        },
+        {
+          "name": "desktop",
+          "type": "boolean",
+          "default": false,
+          "description": "Enable macOS desktop notifications"
+        },
+        {
+          "name": "bell",
+          "type": "boolean",
+          "default": false,
+          "description": "Enable terminal bell/beep"
+        }
+      ]
+    }
+  ]
+}
