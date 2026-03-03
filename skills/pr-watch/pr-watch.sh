@@ -30,9 +30,66 @@ else
     NOTIFIER="osascript"
 fi
 
+# Show help
+show_help() {
+    cat <<EOF
+PR Notifier - Monitor GitHub Pull Request Status
+
+Usage: /pr-watch <PR-NUMBER|JIRA-KEY> [OPTIONS]
+
+Arguments:
+  PR-NUMBER|JIRA-KEY    PR number (e.g., 1085) or Jira ticket (e.g., TAK-1674)
+                        Supports comma-separated list for multiple PRs
+
+Options:
+  --notify-on=TYPE      Filter notifications (default: all)
+                        Values: all, checks, reviews, comments
+
+  --interval=TIME       Polling interval (default: 30s)
+                        Examples: 15s, 30s, 60s, 1m
+
+  --until=CONDITION     Auto-stop when condition is met
+                        Values: checks-pass, approved, merged, closed
+
+  --desktop             Enable macOS desktop notifications (default: on)
+  --no-desktop          Disable desktop notifications
+  --bell                Enable terminal bell/beep on events
+
+  --jira-ticket=KEY     Auto-transition Jira ticket to "In Review" when checks pass
+  --use-osascript       Force use of osascript instead of terminal-notifier
+
+  --help                Show this help message
+
+Examples:
+  /pr-watch 1085
+  /pr-watch TAK-1674
+  /pr-watch TAK-1674 --notify-on=checks --desktop
+  /pr-watch 1085 --until=checks-pass --interval=15s --bell
+  /pr-watch 1085,TAK-1256,1087 --notify-on=checks
+
+Features:
+  🔑 Jira Key Support - Use ticket keys instead of PR numbers
+  🔄 CI/CD Monitoring - Track build and test status
+  👀 Review Tracking - Get notified when reviews are submitted
+  💬 Comment Alerts - See new comments as they arrive
+  ⚠️ Merge Conflicts - Immediate conflict detection
+  🎯 Smart Auto-Stop - Stops when conditions are met
+  🔔 Desktop Notifications - Rich macOS notifications
+  📊 Summary Reports - Statistics and insights
+
+Requirements:
+  - GitHub CLI (gh) installed and authenticated
+  - Access to the repository
+EOF
+    exit 0
+}
+
 # Parse arguments
 for arg in "$@"; do
     case $arg in
+        --help|-h)
+            show_help
+            ;;
         --interval=*)
             INTERVAL_STR="${arg#*=}"
             INTERVAL=$(echo "$INTERVAL_STR" | sed 's/s$//')
