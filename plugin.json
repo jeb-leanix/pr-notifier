@@ -1,0 +1,35 @@
+{
+  "name": "pr-notifier",
+  "version": "1.0.0",
+  "description": "GitHub PR monitoring with Jira key support, CI/CD tracking, reviews, and desktop notifications",
+  "author": "Jens Beau",
+  "homepage": "https://github.com/jeb-leanix/pr-notifier",
+  "skills": [
+    "pr-watch"
+  ],
+  "requirements": {
+    "gh": "GitHub CLI must be installed and authenticated"
+  },
+  "settings": {
+    "default-interval": {
+      "type": "string",
+      "description": "Default polling interval (15s, 30s, 60s)",
+      "default": "30s"
+    },
+    "default-notify-on": {
+      "type": "string",
+      "description": "Default notification filter (all, checks, reviews, comments)",
+      "default": "all"
+    },
+    "desktop-notifications": {
+      "type": "boolean",
+      "description": "Enable macOS desktop notifications by default",
+      "default": true
+    },
+    "bell-notifications": {
+      "type": "boolean",
+      "description": "Enable terminal bell notifications",
+      "default": false
+    }
+  }
+}
